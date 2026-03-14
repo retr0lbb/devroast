@@ -1,9 +1,11 @@
 "use client";
 
 import { twMerge } from "tailwind-merge";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import hljs from "highlight.js";
-import { codeToHtml } from "shiki";
+import { createHighlighter, type Highlighter } from "shiki";
+
+const MAX_CHARACTERS = 2000;
 
 type CodeEditorProps = {
   value: string;
@@ -11,105 +13,160 @@ type CodeEditorProps = {
   className?: string;
 };
 
-// Map highlight.js language names to Shiki language names where they differ
-const langMap: Record<string, string> = {
+// Supported languages for both Shiki and the manual selector
+const SUPPORTED_LANGUAGES = [
+  "javascript",
+  "typescript",
+  "python",
+  "ruby",
+  "csharp",
+  "cpp",
+  "c",
+  "java",
+  "go",
+  "rust",
+  "php",
+  "html",
+  "css",
+  "json",
+  "xml",
+  "sql",
+  "bash",
+  "yaml",
+  "markdown",
+  "swift",
+  "kotlin",
+  "lua",
+  "r",
+  "dart",
+  "scala",
+  "elixir",
+  "text",
+] as const;
+
+type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+// Map highlight.js language aliases → canonical Shiki names
+const langMap: Record<string, SupportedLanguage> = {
   js: "javascript",
   ts: "typescript",
   py: "python",
   rb: "ruby",
   cs: "csharp",
-  cpp: "cpp",
-  c: "c",
-  java: "java",
-  go: "go",
-  rs: "rust",
-  php: "php",
-  html: "html",
-  css: "css",
-  json: "json",
-  xml: "xml",
-  sql: "sql",
-  bash: "bash",
   sh: "bash",
-  yaml: "yaml",
   yml: "yaml",
   md: "markdown",
 };
 
+// ── Singleton Highlighter (created once, reused forever) ──────────
+let highlighterPromise: Promise<Highlighter> | null = null;
+
+function getHighlighter(): Promise<Highlighter> {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ["vesper"],
+      langs: [...SUPPORTED_LANGUAGES],
+    });
+  }
+  return highlighterPromise;
+}
+
+// Pre-warm the highlighter as soon as the module loads
+getHighlighter();
+
+function resolveLanguage(detected: string): SupportedLanguage {
+  const mapped = langMap[detected] || detected;
+  if ((SUPPORTED_LANGUAGES as readonly string[]).includes(mapped)) {
+    return mapped as SupportedLanguage;
+  }
+  return "text";
+}
+
 function CodeEditor({ value, onChange, className }: CodeEditorProps) {
   const [isEditing, setIsEditing] = useState(true);
   const [highlightedHtml, setHighlightedHtml] = useState<string>("");
+  const [detectedLang, setDetectedLang] = useState<SupportedLanguage>("text");
+  const [manualLang, setManualLang] = useState<SupportedLanguage | null>(null);
+  const [showLangPicker, setShowLangPicker] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const isOverLimit = value.length > MAX_CHARACTERS;
 
   const lines = value.split("\n");
   const lineCount = Math.max(lines.length, 16);
 
+  // The effective language: manual override wins over auto-detection
+  const effectiveLang = manualLang ?? detectedLang;
+
+  const highlightCode = useCallback(
+    async (code: string, lang: SupportedLanguage) => {
+      try {
+        const highlighter = await getHighlighter();
+        const html = highlighter.codeToHtml(code, {
+          lang,
+          theme: "vesper",
+        });
+        setHighlightedHtml(html);
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Failed to highlight code:", error);
+        setIsEditing(true);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
-    // If empty, always show the editor
     if (!value.trim()) {
       setIsEditing(true);
       setHighlightedHtml("");
+      setDetectedLang("text");
+      setShowLangPicker(false);
       return;
     }
 
-    const highlightCode = async () => {
-      try {
-        // Detect language using highlight.js
-        const detection = hljs.highlightAuto(value);
-        const detectedLang = detection.language || "text";
-        const shikiLang = langMap[detectedLang] || detectedLang;
+    // Auto-detect only if no manual override
+    if (!manualLang) {
+      const detection = hljs.highlightAuto(value);
+      const rawLang = detection.language || "text";
+      const resolved = resolveLanguage(rawLang);
+      setDetectedLang(resolved);
 
-        // Generate highlighted HTML using Shiki
-        let html: string;
-        try {
-          html = await codeToHtml(value, {
-            lang: shikiLang,
-            theme: "vesper",
-          });
-        } catch (_) {
-          // Se o shiki não suportar a linguagem detectada (ex: wren), fallback para plain text
-          html = await codeToHtml(value, {
-            lang: "text",
-            theme: "vesper",
-          });
-        }
-        
-        // Remove the outer <pre> wrapper that shiki adds, as we want to keep it raw for our layout
-        // Shiki output format is roughly: <pre class="shiki vesper" style="..."><code>...</code></pre>
-        // We extract just the inner HTML of the <code> tag if possible to style it ourselves,
-        // or just use the generated HTML directly if it's easier. 
-        // For simplicity and to keep the exact vesper theme text colors, we'll keep the shiki HTML
-        // but we need to ensure it wraps correctly.
-        setHighlightedHtml(html);
-        setIsEditing(false); // Switch to preview mode after highlighting
-      } catch (error) {
-        console.error("Failed to highlight code:", error);
-        // Fallback para textarea puro se ocorrer um erro muito grave
-        setIsEditing(true); 
-      }
-    };
+      // Show language picker when detection confidence is low
+      const isLowConfidence =
+        resolved === "text" ||
+        (detection.relevance !== undefined && detection.relevance < 5);
+      setShowLangPicker(isLowConfidence);
+    }
 
-    // Debounce the highlighting slightly so it doesn't run on every single keystroke if the user is typing
+    // Near-instant: 150ms debounce (just enough to batch rapid keystrokes)
     const timeoutId = setTimeout(() => {
-        highlightCode();
-    }, 500);
+      highlightCode(value, manualLang ?? detectedLang);
+    }, 150);
 
     return () => clearTimeout(timeoutId);
-  }, [value]);
+  }, [value, manualLang, detectedLang, highlightCode]);
+
+  // Re-highlight immediately when manual language changes
+  useEffect(() => {
+    if (manualLang && value.trim()) {
+      highlightCode(value, manualLang);
+    }
+  }, [manualLang, value, highlightCode]);
 
   const handleContainerClick = () => {
     if (!isEditing) {
       setIsEditing(true);
-      // Focus the textarea after state update using a small timeout
       setTimeout(() => {
-         inputRef.current?.focus();
+        inputRef.current?.focus();
       }, 0);
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-     // Optional: You could trigger highlighting immediately on paste here
-     // but the useEffect with debounce handles it well enough.
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = e.target.value as SupportedLanguage;
+    setManualLang(selected);
+    setShowLangPicker(false);
   };
 
   return (
@@ -125,10 +182,63 @@ function CodeEditor({ value, onChange, className }: CodeEditorProps) {
         <span className="size-3 rounded-full bg-accent-red" />
         <span className="size-3 rounded-full bg-accent-amber" />
         <span className="size-3 rounded-full bg-accent-green" />
+
+        {/* Language badge + selector + character counter */}
+        <div className="ml-auto flex items-center gap-3">
+          {value.trim() && (
+            <>
+              <span className="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">
+                {effectiveLang}
+              </span>
+
+              {showLangPicker && (
+                <select
+                  value={manualLang ?? ""}
+                  onChange={handleLanguageChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-bg-surface border border-border-primary text-text-secondary font-mono text-[10px] rounded px-1.5 py-0.5 outline-none cursor-pointer"
+                >
+                  <option value="" disabled>
+                    select language
+                  </option>
+                  {SUPPORTED_LANGUAGES.filter((l) => l !== "text").map(
+                    (lang) => (
+                      <option key={lang} value={lang}>
+                        {lang}
+                      </option>
+                    ),
+                  )}
+                </select>
+              )}
+
+              {!showLangPicker && !manualLang && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowLangPicker(true);
+                  }}
+                  className="font-mono text-[10px] text-text-tertiary enabled:hover:text-text-secondary transition-colors"
+                >
+                  change
+                </button>
+              )}
+
+              <span
+                className={twMerge(
+                  "font-mono text-[10px] tabular-nums",
+                  isOverLimit ? "text-accent-red" : "text-text-tertiary",
+                )}
+              >
+                {value.length}/{MAX_CHARACTERS}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Code Area */}
-      <div className="flex flex-1 bg-bg-input overflow-y-auto">
+      <div className="flex flex-1 bg-bg-input overflow-y-auto max-h-[32rem]">
         {/* Line Numbers */}
         <div className="flex flex-col items-end gap-0 py-4 px-3 w-12 border-r border-border-primary bg-bg-surface select-none shrink-0">
           {Array.from({ length: lineCount }, (_, i) => (
@@ -148,32 +258,24 @@ function CodeEditor({ value, onChange, className }: CodeEditorProps) {
             ref={inputRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onPaste={handlePaste}
             onBlur={() => {
-                if(value.trim()) setIsEditing(false);
+              if (value.trim()) setIsEditing(false);
             }}
             placeholder="// paste your code here..."
             spellCheck={false}
             className={twMerge(
               "absolute inset-0 w-full h-full py-4 px-4 bg-transparent font-mono text-xs leading-[1.625] text-text-primary placeholder:text-text-tertiary outline-none resize-none",
-              !isEditing && "opacity-0 pointer-events-none" // Hide textarea when not editing, but keep it in DOM for value
+              !isEditing && "opacity-0 pointer-events-none",
             )}
-            style={{
-                // Ensure textarea text aligns perfectly with the highlighted text if we were doing overlay
-                // For mode-switching, we just hide it.
-            }}
           />
-          
-          <div 
-             className={twMerge(
-                 "absolute inset-0 w-full h-full py-4 px-4 overflow-auto pointer-events-none",
-                 isEditing && "opacity-0"
-             )}
-             // We use dangerouslySetInnerHTML to render the HTML returned by Shiki
-             // Note: in a real app, ensure you sanitize if the input is untrusted,
-             // but here the code is just strings rendered by shiki.
-             // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki output is safe HTML
-             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+
+          <div
+            className={twMerge(
+              "absolute inset-0 w-full h-full py-4 px-4 pointer-events-none",
+              isEditing && "opacity-0",
+            )}
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki output is safe HTML
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         </div>
       </div>
@@ -181,4 +283,4 @@ function CodeEditor({ value, onChange, className }: CodeEditorProps) {
   );
 }
 
-export { CodeEditor, type CodeEditorProps };
+export { CodeEditor, MAX_CHARACTERS, type CodeEditorProps };

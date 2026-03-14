@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { CodeEditor } from "@/components/code-editor";
+import { CodeEditor, MAX_CHARACTERS } from "@/components/code-editor";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 
 function HomeEditor() {
   const [code, setCode] = useState("");
   const [roastMode, setRoastMode] = useState(true);
+
+  const isOverLimit = code.length > MAX_CHARACTERS;
 
   return (
     <div className="flex flex-col items-center gap-8 w-full">
@@ -30,7 +32,7 @@ function HomeEditor() {
           </span>
         </div>
 
-        <Button variant="primary" size="lg" disabled={code.trim().length === 0}>
+        <Button variant="primary" size="lg" disabled={code.trim().length === 0 || isOverLimit}>
           $ roast_my_code
         </Button>
       </div>

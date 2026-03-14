@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { HomeEditor } from "./home-editor";
+import { HomeMetrics, HomeMetricsSkeleton } from "./home-metrics";
 
 const leaderboardEntries = [
   {
@@ -60,15 +62,9 @@ export default function HomePage() {
       </section>
 
       {/* Footer Stats */}
-      <div className="flex items-center gap-6 justify-center pt-8">
-        <span className="font-mono text-xs text-text-tertiary">
-          2,847 codes roasted
-        </span>
-        <span className="font-mono text-xs text-text-tertiary">·</span>
-        <span className="font-mono text-xs text-text-tertiary">
-          avg score: 4.2/10
-        </span>
-      </div>
+      <Suspense fallback={<HomeMetricsSkeleton />}>
+        <HomeMetrics />
+      </Suspense>
 
       {/* Spacer */}
       <div className="h-15" />
@@ -124,7 +120,7 @@ export default function HomePage() {
               className={`flex px-5 py-4 ${index < leaderboardEntries.length - 1 ? "border-b border-border-primary" : ""}`}
             >
               <span
-                className={`w-12 font-mono text-xs ${entry.rank === 1 ? "text-accent-amber" : "text-text-secondary"}`}
+                className={`w-12 font-mono text-xs text-accent-amber `}
               >
                 {entry.rank}
               </span>

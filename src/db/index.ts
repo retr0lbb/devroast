@@ -1,9 +1,11 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
-import * as dotenv from 'dotenv';
+import { config } from 'dotenv';
+import { resolve } from 'node:path';
 
-dotenv.config({ path: '.env.local' });
+config({ path: resolve(process.cwd(), '.env') });
+config({ path: resolve(process.cwd(), '.env.local') });
 
 const globalForDb = globalThis as unknown as {
   conn: Pool | undefined;
