@@ -33,3 +33,17 @@ src/
 - `Toggle` uses `@base-ui/react` Switch primitive for accessibility
 - `ScoreRing` has a single fixed size (180px)
 - Biome config has `noUnknownAtRules` ignore list for Tailwind directives (`@theme`, `@apply`, `@utility`)
+
+## Data Fetching (tRPC)
+
+- **Version:** tRPC v11 with `@trpc/tanstack-react-query`
+- **Client Hook:** Use `useTRPC()` from `@/trpc/client`. It returns the decorated tRPC client directly (no destructuring needed).
+- **Query Pattern:** Use standard TanStack Query `useQuery` hook combined with tRPC's `queryOptions()`. This provides the best compatibility with React 19 and `use()`.
+
+```tsx
+const trpc = useTRPC();
+const { data } = useQuery(trpc.router.procedure.queryOptions(input));
+```
+
+- **Initial State:** Avoid skeletons for simple metrics. Prefer starting with default values (e.g., `0`) and letting `NumberFlow` animate the transition when data arrives.
+- **Router Structure:** Routers are defined in `src/trpc/routers/`. Use `createTRPCRouter` and `baseProcedure` from `../init`.
