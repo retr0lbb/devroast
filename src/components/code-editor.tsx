@@ -49,13 +49,29 @@ type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 // Map highlight.js language aliases → canonical Shiki names
 const langMap: Record<string, SupportedLanguage> = {
   js: "javascript",
+  javascript: "javascript",
   ts: "typescript",
+  typescript: "typescript",
   py: "python",
+  python: "python",
   rb: "ruby",
+  ruby: "ruby",
   cs: "csharp",
+  csharp: "csharp",
+  "c#": "csharp",
+  cpp: "cpp",
+  "c++": "cpp",
   sh: "bash",
+  bash: "bash",
   yml: "yaml",
+  yaml: "yaml",
   md: "markdown",
+  markdown: "markdown",
+  sql: "sql",
+  php: "php",
+  java: "java",
+  go: "go",
+  rust: "rust",
 };
 
 // ── Singleton Highlighter (created once, reused forever) ──────────
@@ -75,7 +91,8 @@ function getHighlighter(): Promise<Highlighter> {
 getHighlighter();
 
 function resolveLanguage(detected: string): SupportedLanguage {
-  const mapped = langMap[detected] || detected;
+  const normalized = detected.toLowerCase();
+  const mapped = langMap[normalized] || normalized;
   if ((SUPPORTED_LANGUAGES as readonly string[]).includes(mapped)) {
     return mapped as SupportedLanguage;
   }
@@ -107,10 +124,8 @@ function CodeEditor({ value, onChange, className }: CodeEditorProps) {
           theme: "vesper",
         });
         setHighlightedHtml(html);
-        setIsEditing(false);
       } catch (error) {
         console.error("Failed to highlight code:", error);
-        setIsEditing(true);
       }
     },
     [],

@@ -66,12 +66,13 @@ export const appRouter = createTRPCRouter({
           .insert(roasts)
           .values({
             codeSnippet,
-            language: result.language,
+            language: result.language.toLowerCase(),
             linesCount: codeSnippet.split("\n").length,
             isRoastMode,
             score: result.score.toString(),
             verdict: result.verdict,
             roastSummary: result.roastSummary,
+            details: result.details,
             fixedCode: result.fixedCode,
           })
           .returning({ id: roasts.id });

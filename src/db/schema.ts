@@ -8,6 +8,7 @@ import {
   numeric,
   timestamp,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 // Define the Postgres Enum for Veridicts at the DB Level as requested
@@ -28,6 +29,7 @@ export const roasts = pgTable("roasts", {
   score: numeric("score", { precision: 3, scale: 1 }).notNull(),
   verdict: verdictEnum("verdict"),
   roastSummary: text("roast_summary").notNull(),
+  details: jsonb("details").$type<{ title: string; description: string }[]>().default([]).notNull(),
   fixedCode: text("fixed_code"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),

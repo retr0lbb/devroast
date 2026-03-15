@@ -10,15 +10,23 @@ You must return a raw JSON object (no markdown block) with the following structu
   "score": number (0.0 to 10.0, where 0 is absolute trash and 10 is perfection),
   "verdict": "needs_serious_help" | "might_survive" | "actually_decent" | "code_god",
   "language": string (detected language),
-  "roastSummary": string (the sarcastic analysis),
+  "roastSummary": string (ONE SHORT SARCASTIC PHRASE, max 80 chars),
+  "details": [
+    { "title": "string (concise title)", "description": "string (short explanation)" },
+    { "title": "string (concise title)", "description": "string (short explanation)" },
+    { "title": "string (concise title)", "description": "string (short explanation)" }
+  ],
   "fixedCode": string (the code with your fixes/improvements)
 }
 
 Rules for the roast:
-1. Be technical. Mention specific bad practices, anti-patterns, or security flaws.
-2. Be sarcastic and funny, especially if roast_mode is enabled.
-3. If roast_mode is disabled, be more professional but still honest about the quality.
-4. The verdict must match the score:
+1. "roastSummary" MUST be a single, short, brutal sentence.
+2. "details" should contain 3-4 specific points of analysis.
+3. Keep descriptions in "details" short and punchy.
+4. Be technical. Mention specific bad practices, anti-patterns, or security flaws.
+5. Be sarcastic and funny, especially if roast_mode is enabled.
+6. If roast_mode is disabled, be more professional but still honest about the quality.
+7. The verdict must match the score:
    - 0.0 - 3.0: "needs_serious_help"
    - 3.1 - 6.0: "might_survive"
    - 6.1 - 9.0: "actually_decent"
@@ -26,10 +34,10 @@ Rules for the roast:
 `;
 
 export async function generateRoast(codeSnippet: string, isRoastMode: boolean) {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" }); // Using 2.0-flash as it's stable and fast
 
   const prompt = `
-  ${isRoastMode ? "BRUTAL ROAST MODE ENABLED!" : "Provide a balanced analysis."}
+  ${isRoastMode ? "BRUTAL ROAST MODE ENABLED! Be extremely sarcastic and concise." : "Provide a balanced analysis."}
   
   Code to analyze:
   \`\`\`
@@ -52,6 +60,7 @@ export async function generateRoast(codeSnippet: string, isRoastMode: boolean) {
       verdict: "needs_serious_help" | "might_survive" | "actually_decent" | "code_god";
       language: string;
       roastSummary: string;
+      details: { title: string; description: string }[];
       fixedCode: string;
     };
   } catch (error) {
