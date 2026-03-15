@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CodeBlock } from "@/components/ui/code-block";
 import { CollapsibleCode } from "@/components/ui/collapsible-code";
 import type { BundledLanguage } from "shiki";
+import { unstable_cacheLife as cacheLife } from "next/cache";
 
 function scoreColor(score: number): string {
   if (score <= 3) return "text-accent-red";
@@ -11,8 +12,11 @@ function scoreColor(score: number): string {
 }
 
 export async function ShameLeaderboard() {
+  "use cache";
+  cacheLife("hours");
+
   const { entries: leaderboard, totalCount } =
-    await caller.metrics.getLeaderboard();
+    await caller.metrics.getLeaderboard({});
 
   return (
     <div className="flex flex-col gap-6 w-full">

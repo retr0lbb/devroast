@@ -28,6 +28,7 @@ export const roasts = pgTable("roasts", {
   score: numeric("score", { precision: 3, scale: 1 }).notNull(),
   verdict: verdictEnum("verdict"),
   roastSummary: text("roast_summary").notNull(),
+  fixedCode: text("fixed_code"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
