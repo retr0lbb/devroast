@@ -10,6 +10,7 @@ type CodeBlockProps = {
 };
 
 async function CodeBlock({ code, lang, filename, className }: CodeBlockProps) {
+  "use cache";
   const normalizedLang = lang.toLowerCase() as BundledLanguage;
   const html = await codeToHtml(code, {
     lang: normalizedLang,

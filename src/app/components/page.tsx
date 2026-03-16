@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 import {
   AnalysisCardDescription,
   AnalysisCardRoot,
@@ -29,7 +30,9 @@ const sampleCode = `function calculateTotal(items) {
   }
 }`;
 
-export default function ComponentsPage() {
+export default async function ComponentsPage() {
+  "use cache";
+  cacheLife("hours");
   return (
     <div className="min-h-screen bg-bg-page p-12 space-y-16">
       <header>
