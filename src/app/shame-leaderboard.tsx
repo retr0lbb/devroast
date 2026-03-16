@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CodeBlock } from "@/components/ui/code-block";
 import { CollapsibleCode } from "@/components/ui/collapsible-code";
 import type { BundledLanguage } from "shiki";
-import { unstable_cacheLife as cacheLife } from "next/cache";
+import { cacheLife } from "next/cache";
 
 function scoreColor(score: number): string {
   if (score <= 3) return "text-accent-red";

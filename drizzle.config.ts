@@ -7,11 +7,15 @@ config({ path: resolve(process.cwd(), '.env') });
 // Caso o usuário use .env.local via Next.js
 config({ path: resolve(process.cwd(), '.env.local') });
 
+// Force allow self-signed certificates for Supabase migrations
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle/migrations',
   dialect: 'postgresql', // Note: drizzle-kit 0.22+ uses `dialect` instead of `driver`
   dbCredentials: {
     url: process.env.DATABASE_URL!,
+    ssl: { rejectUnauthorized: false },
   },
 });

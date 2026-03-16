@@ -5,7 +5,7 @@ import {
 } from "@/components/leaderboard-entry";
 import { caller } from "@/trpc/server";
 import type { BundledLanguage } from "shiki";
-import { unstable_cacheLife as cacheLife } from "next/cache";
+import { cacheLife } from "next/cache";
 
 export default async function LeaderboardPage() {
   "use cache";
