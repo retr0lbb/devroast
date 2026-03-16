@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import {
   AnalysisCardDescription,
   AnalysisCardRoot,
@@ -130,11 +131,13 @@ export default function ComponentsPage() {
       {/* Code Block */}
       <Section title="code_block" file="code-block.tsx">
         <div className="max-w-xl">
-          <CodeBlock
-            code={sampleCode}
-            lang="javascript"
-            filename="calculate.js"
-          />
+          <Suspense fallback={<div className="h-40 w-full animate-pulse bg-bg-surface border border-border-primary" />}>
+            <CodeBlock
+              code={sampleCode}
+              lang="javascript"
+              filename="calculate.js"
+            />
+          </Suspense>
         </div>
       </Section>
 

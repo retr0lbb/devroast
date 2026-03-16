@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { JetBrains_Mono } from "next/font/google";
 import { Navbar } from "@/components/navbar";
 import { TRPCReactProvider } from "@/trpc/client";
@@ -24,7 +25,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <TRPCReactProvider>
           <Navbar />
-          {children}
+          <Suspense>{children}</Suspense>
         </TRPCReactProvider>
       </body>
     </html>
